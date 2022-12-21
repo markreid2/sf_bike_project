@@ -1,0 +1,243 @@
+/*Querys related to question 1 */
+
+-- table preview for modeanalytics.sf_bike_share_station
+SELECT 
+  *
+FROM modeanalytics.sf_bike_share_station;
+
+/*display bike_share_trip table*/
+
+ SELECT 
+		*
+ FROM modeanalytics.sf_bike_share_trip;
+ 
+/*seperate table into dinstinct years and order by longest trip duration*/
+
+SELECT duration, start_date, end_date
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2013-01-01'
+      AND start_date <= '2013-12-31'
+ORDER BY duration DESC;
+
+/* the longest trip that began in 2013 was 722236 seconds, or roughly 8.4 days */
+
+SELECT duration, start_date, end_date
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2014-01-01'
+      AND start_date <= '2014-12-31'
+ORDER BY duration DESC;
+
+/* the longest trip that began in 2014 was 17270400 seconds, or roughly 199.9 days */
+
+SELECT duration, start_date, end_date
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2015-01-01'
+      AND start_date <= '2015-12-31'
+ORDER BY duration DESC;
+
+/* the longest trip that began in 2015 was 2137000 seconds, or roughly 24.7 days 
+
+I find it hard to believe that someone would rent a bike for longer than 1 or maybe 2 days at most. The trip durations that lasted longer 
+than 2 days are likely to be some sort of glitch or extenuating circumstance. */
+
+/* find avergage duration for each year*/
+
+SELECT AVG(duration)
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2013-01-01'
+      AND start_date <= '2013-12-31';
+      
+/* average trip duration for 2013 was 1313.5683 seconds, or roughly 21.9 minutes*/
+
+SELECT AVG(duration)
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2014-01-01'
+      AND start_date <= '2014-12-31';
+      
+/* average trip duration for 2014 was 1131.5596 seconds, or roughly 18.9 minutes*/
+
+SELECT AVG(duration)
+FROM modeanalytics.sf_bike_share_trip
+WHERE
+      start_date >= '2015-01-01'
+      AND start_date <= '2015-12-31';
+      
+/* average trip duration for 2015 was 988.6862 seconds, or roughly 16.5 minutes*/ 
+
+/*Querys related to question 2 */
+
+/*full outer join for station & trip tables*/
+
+SELECT
+    *
+FROM
+    modeanalytics.sf_bike_share_trip
+FULL OUTER JOIN modeanalytics.sf_bike_share_station 
+    ON start_station_name = name
+    
+WHERE start_date > installation_date;
+
+/*first, I performed the <= function to note if any trips had been started on or before the installation date for each station
+  this returned 0 results 
+I then performed a 'sanity check' using the > function to ensure it still returned all the rows and wasn't missing any data
+  this returned 658,617 rows, which is the full dataset
+  
+This shows that no trips had been started before the installation date for any stations*/
+
+/*Querys related to question 3 */
+
+
+/*create dataframe showing each station and the related count of trips that started at that station
+inner join with the station table to show dock count for each station*/
+
+SELECT start_station_name, COUNT(start_station_name), dock_count
+FROM modeanalytics.sf_bike_share_trip
+INNER JOIN modeanalytics.sf_bike_share_station
+  ON start_station_name = name
+  GROUP BY start_station_name, dock_count;
+
+/*there does not appear to be any direct correlation between dock count and the number of trips started at each station*/
+
+/* In order to determine modifying the dock counts at each start station, it would be helpful to know how often those stations are empty 
+(meaning they do not have a bike available), or it would also be interesting to know the average amount of bikes available at each location 
+If certain stations are consistently empty, or have a limited amount of bikes then it may be beneficial to increase the dock count. */
+
+/*Querys related to question 4 */
+
+
+/*(San Francisco Caltrain(Townsend at 4th) = start_station_id 70) and zip code is 94107*/
+ 
+ /* 2013-08-29 is earliest weather date reported, 2015-08-31 is latest weather date reported
+ 147 days of rain in between 2013-08-29 and 2015-08-31, 586 days had 0 inches of rainfall 
+ */ 
+ 
+ 
+
+
+/* join weather and bike trip tables, count how many trips occured per day for start station = 70 
+for dates with no rainfall */
+
+CREATE TABLE Y AS 
+
+SELECT 
+		cast (modeanalytics.sf_weather.date AS varchar(10)), cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+		count(*) AS TRIPS
+ FROM modeanalytics.sf_bike_share_trip
+FULL OUTER JOIN modeanalytics.sf_weather 
+  ON cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)) = cast (modeanalytics.sf_weather.date AS varchar(10))
+  WHERE modeanalytics.sf_weather.zip_code = '94107'
+  AND start_station_id = '70'
+  AND precipitation_inches = '0'
+  GROUP BY cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+  cast (modeanalytics.sf_weather.date AS varchar(10))
+  ORDER BY cast (modeanalytics.sf_weather.date AS varchar(10));
+  
+      SELECT AVG(TRIPS)
+  FROM Y 
+  
+    
+  /* I receive this error message:
+  
+  org.postgresql.util.PSQLException: ERROR: cannot execute CREATE TABLE AS in a read-only transaction
+  
+  so I will instead just run the above query without creating a seperate table and 
+  do the calculation by hand (copy and paste 'TRIPS' column data into excel and average the column)
+  to get the average trips per day w/ and w/out rainfall at the Caltrain (townsend at 4th) station for comparison */
+  
+  
+  /*average trips per day when it doesn't rain =  67.629693 */
+
+/* select for dates that had rainfall in addition to above criteria*/
+CREATE TABLE X AS 
+SELECT 
+		cast (modeanalytics.sf_weather.date AS varchar(10)), cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+		count(*) AS TRIPS
+ FROM modeanalytics.sf_bike_share_trip
+FULL OUTER JOIN modeanalytics.sf_weather
+  ON cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)) = cast (modeanalytics.sf_weather.date AS varchar(10))
+  WHERE modeanalytics.sf_weather.zip_code = '94107'
+  AND start_station_id = '70'
+  AND precipitation_inches > '0'
+  GROUP BY cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+  cast (modeanalytics.sf_weather.date AS varchar(10)), precipitation_inches
+  ORDER BY cast (modeanalytics.sf_weather.date AS varchar(10));
+  
+    SELECT AVG(TRIPS)
+  FROM X 
+
+  /*average trips per day when it does rain =  64.80147 */
+  
+  
+  SELECT 
+		cast (modeanalytics.sf_weather.date AS varchar(10)), cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+		count(*) AS TRIPS
+ FROM modeanalytics.sf_bike_share_trip
+FULL OUTER JOIN modeanalytics.sf_weather
+  ON cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)) = cast (modeanalytics.sf_weather.date AS varchar(10))
+  WHERE modeanalytics.sf_weather.zip_code = '94107'
+  AND start_station_id = '70'
+  AND precipitation_inches = 'T'
+  GROUP BY cast (modeanalytics.sf_bike_share_trip.start_date AS varchar(10)), 
+  cast (modeanalytics.sf_weather.date AS varchar(10)), precipitation_inches
+  ORDER BY cast (modeanalytics.sf_weather.date AS varchar(10));
+  
+    /*average trips per day when given 'T' for precipitation_inches =  72.271429 */
+    
+/*Querys related to question 5 */
+
+/* most of the data in these datasets are 'clean'.  There are very few null values meaning the data is relatively complete, 
+almost every datapoint is correctly formatted, there are very few duplicates (none that I found), and no data were corrupted. 
+However, the precipitation data from the weather table is not fully clean. many values are 'T' instead of a numerical value that 
+describes the amount of rainfall for that given row.  */
+
+/*Querys related to question 6 */
+
+
+/*Most common routes*/
+
+SELECT X.start_station_name, X.end_station_name, COUNT(*) AS trip_count
+    FROM modeanalytics.sf_bike_share_trip as X
+    GROUP BY X.start_station_name, X.end_station_name
+    ORDER BY trip_count DESC
+    LIMIT 15;
+    
+    
+/* Subscription type*/
+
+SELECT subscription_type, COUNT(*) AS total_trips 
+FROM modeanalytics.sf_bike_share_trip 
+GROUP BY subscription_type;
+
+
+SELECT subscription_type, AVG(duration) AS AVG_Duration 
+FROM modeanalytics.sf_bike_share_trip 
+GROUP BY subscription_type;
+
+/* round trips */
+
+SELECT start_station_name, COUNT(*) AS total_trip_count
+FROM modeanalytics.sf_bike_share_trip
+GROUP BY start_station_name
+ORDER BY total_trip_count DESC
+LIMIT 5;
+
+
+SELECT start_station_name, COUNT(*) AS round_trip_count
+FROM modeanalytics.sf_bike_share_trip
+WHERE start_station_name = end_station_name
+GROUP BY start_station_name
+ORDER BY round_trip_count DESC
+LIMIT 5;
+
+SELECT start_station_name, COUNT(*) AS not_round_trip_count
+FROM modeanalytics.sf_bike_share_trip
+WHERE start_station_name != end_station_name
+GROUP BY start_station_name
+ORDER BY not_round_trip_count DESC
+LIMIT 5;
+
